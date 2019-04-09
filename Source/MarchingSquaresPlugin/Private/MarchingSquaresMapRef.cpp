@@ -88,8 +88,8 @@ void UMarchingSquaresMapRef::GetMapDimensionData(FIntPoint& MapDimensionI, FVect
     MapDimensionV = FVector2D(DimX, DimY);
 
     VoxDimensionI = MapDimensionI / BlockSize;
-    VoxDimensionI.X *= MapDimensionI.X-1;
-    VoxDimensionI.Y *= MapDimensionI.Y-1;
+    VoxDimensionI.X *= BlockSize-1;
+    VoxDimensionI.Y *= BlockSize-1;
 
     VoxDimensionV = FVector2D(VoxDimensionI.X, VoxDimensionI.Y);
 }
@@ -134,6 +134,13 @@ int32 UMarchingSquaresMapRef::GetSectionCount() const
     int32 SectionCountX = DimX / BlockSize;
     int32 SectionCountY = DimY / BlockSize;
     return SectionCountX * SectionCountY;
+}
+
+FPMUMeshSectionRef UMarchingSquaresMapRef::GetSection(int32 FillType, int32 Index)
+{
+    return Map.HasSection(FillType, Index)
+        ? FPMUMeshSectionRef(Map.GetMeshChecked(FillType, Index))
+        : FPMUMeshSectionRef();
 }
 
 FPMUMeshSectionResourceRef UMarchingSquaresMapRef::GetSectionResource(int32 FillType, int32 Index)

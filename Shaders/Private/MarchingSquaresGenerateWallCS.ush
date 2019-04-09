@@ -58,7 +58,7 @@ void GenerateFillCell(uint id)
 
     uint4 color4 = uint4(_Color * 255.f) & 0xFF;
 #if 0
-    uint  color  = color4.r | (color4.g<<8) | (color4.b<<16) | (color4.a<<24);
+    uint  color  = color4.b | (color4.g<<8) | (color4.r<<16) | (color4.a<<24);
 #else
     uint  color  = 0;
 #endif
@@ -104,14 +104,28 @@ void GenerateFillCell(uint id)
 
     // Assign vertex
 
-    Vertex v0 = { p0, uv, ut0, un0, color };
-    Vertex v1 = { p1, uv, ut1, un1, color };
-
     uint i0 = vertexOffset;
     uint i1 = i0 + 1;
 
-    OutVertexData[i0] = v0;
-    OutVertexData[i1] = v1;
+    OutPositionData[(i0*3)  ] = p0.x;
+    OutPositionData[(i0*3)+1] = p0.y;
+    OutPositionData[(i0*3)+2] = p0.z;
+
+    OutPositionData[(i1*3)  ] = p1.x;
+    OutPositionData[(i1*3)+1] = p1.y;
+    OutPositionData[(i1*3)+2] = p1.z;
+
+    OutTexCoordData[i0] = uv;
+    OutTexCoordData[i1] = uv;
+
+    OutTangentData[(i0*2)  ] = ut0;
+    OutTangentData[(i0*2)+1] = un0;
+
+    OutTangentData[(i1*2)  ] = ut1;
+    OutTangentData[(i1*2)+1] = un1;
+
+    OutColorData[i0] = color;
+    OutColorData[i1] = color;
 
     // Write index data except on boundary cells
 
@@ -223,7 +237,7 @@ void GenerateEdgeCell(uint id)
 
     uint4 color4 = uint4(_Color * 255.f) & 0xFF;
 #if 0
-    uint  color  = color4.r | (color4.g<<8) | (color4.b<<16) | (color4.a<<24);
+    uint  color  = color4.b | (color4.g<<8) | (color4.r<<16) | (color4.a<<24);
 #else
     uint  color  = 0;
 #endif
@@ -289,14 +303,28 @@ void GenerateEdgeCell(uint id)
 
         // Write vertex data
 
-        Vertex v0 = { p0, uv, ut0, un0, color };
-        Vertex v1 = { p1, uv, ut1, un1, color };
-
         uint i0 = vertexOffset + vertIdx*2;
         uint i1 = i0 + 1;
 
-        OutVertexData[i0] = v0;
-        OutVertexData[i1] = v1;
+        OutPositionData[(i0*3)  ] = p0.x;
+        OutPositionData[(i0*3)+1] = p0.y;
+        OutPositionData[(i0*3)+2] = p0.z;
+
+        OutPositionData[(i1*3)  ] = p1.x;
+        OutPositionData[(i1*3)+1] = p1.y;
+        OutPositionData[(i1*3)+2] = p1.z;
+
+        OutTexCoordData[i0] = uv;
+        OutTexCoordData[i1] = uv;
+
+        OutTangentData[(i0*2)  ] = ut0;
+        OutTangentData[(i0*2)+1] = un0;
+
+        OutTangentData[(i1*2)  ] = ut1;
+        OutTangentData[(i1*2)+1] = un1;
+
+        OutColorData[i0] = color;
+        OutColorData[i1] = color;
     }
 
     const uint4 caseCodes = {
@@ -375,44 +403,77 @@ void GenerateEdgeCell(uint id)
         uint edgeVIdx = (edgeCode >> 8) & 0x01;
         uint edgeNrm  = PackNormalizedFloat4(float4(normalize(float3(edgeNormals[edgeVIdx], 0)), 1));
 
+#if 1
         // Copy wall edge vertices
 
-        Vertex v0 = OutVertexData[vi.x];
-        Vertex v1 = OutVertexData[vi.y];
+        //Vertex v0 = OutVertexData[vi.x];
+        //Vertex v1 = OutVertexData[vi.y];
 
-        v0.tangentX = wallTangent;
-        v1.tangentX = wallTangent;
+        float3 wp0 = {
+            OutPositionData[(vi.x*3)  ],
+            OutPositionData[(vi.x*3)+1],
+            OutPositionData[(vi.x*3)+2],
+            };
 
-        v0.uv = float2(0, 1);
-        v1.uv = float2(0, 1);
+        float3 wp1 = {
+            OutPositionData[(vi.y*3)  ],
+            OutPositionData[(vi.y*3)+1],
+            OutPositionData[(vi.y*3)+2],
+            };
 
-        v0.color |= (0xFF << 24);
-        v1.color |= (0xFF << 24);
+        OutPositionData[(wi.x*3)  ] = wp0.x;
+        OutPositionData[(wi.x*3)+1] = wp0.y;
+        OutPositionData[(wi.x*3)+2] = wp0.z;
+
+        OutPositionData[(wi.y*3)  ] = wp1.x;
+        OutPositionData[(wi.y*3)+1] = wp1.y;
+        OutPositionData[(wi.y*3)+2] = wp1.z;
+
+        OutTangentData[(wi.x*2)  ] = wallTangent;
+        OutTangentData[(wi.x*2)+1] = OutTangentData[(vi.y*2)+1];
+
+        OutTangentData[(wi.y*2)  ] = wallTangent;
+        OutTangentData[(wi.y*2)+1] = OutTangentData[(vi.y*2)+1];
+
+        OutTexCoordData[wi.x] = float2(0,1);
+        OutTexCoordData[wi.y] = float2(0,1);
+
+        OutColorData[wi.x] = OutColorData[vi.x] | (0xFF<<24);
+        OutColorData[wi.y] = OutColorData[vi.y] | (0xFF<<24);
 
         // Copy inner wall vertices
 
-        Vertex v2 = v0;
-        Vertex v3 = v1;
+        //Vertex v2 = v0;
+        //Vertex v3 = v1;
 
-        v2.position.z *= 0.5f;
-        v3.position.z *= 0.5f;
+        OutPositionData[(wi.z*3)  ] = wp0.x;
+        OutPositionData[(wi.z*3)+1] = wp0.y;
+        OutPositionData[(wi.z*3)+2] = wp0.z * .5f;
 
-        v2.uv.y = 1.f/3.f;
-        v3.uv.y = 2.f/3.f;
+        OutPositionData[(wi.w*3)  ] = wp1.x;
+        OutPositionData[(wi.w*3)+1] = wp1.y;
+        OutPositionData[(wi.w*3)+2] = wp1.z * .5f;
 
-        v2.color |= (0xFF << 24);
-        v3.color |= (0xFF << 24);
+        OutTangentData[(wi.z*2)  ] = wallTangent;
+        OutTangentData[(wi.z*2)+1] = edgeNrm;
 
-        v2.tangentZ = edgeNrm;
-        v3.tangentZ = edgeNrm;
+        OutTangentData[(wi.w*2)  ] = wallTangent;
+        OutTangentData[(wi.w*2)+1] = edgeNrm;
+
+        OutTexCoordData[wi.z] = float2(0,1.f/3.f);
+        OutTexCoordData[wi.w] = float2(0,2.f/3.f);
+
+        OutColorData[wi.z] = OutColorData[vi.x] | (0xFF<<24);
+        OutColorData[wi.w] = OutColorData[vi.y] | (0xFF<<24);
 
         // Write vertex data
 
-        OutVertexData[wi.x] = v0;
-        OutVertexData[wi.y] = v1;
+        //OutVertexData[wi.x] = v0;
+        //OutVertexData[wi.y] = v1;
 
-        OutVertexData[wi.z] = v2;
-        OutVertexData[wi.w] = v3;
+        //OutVertexData[wi.z] = v2;
+        //OutVertexData[wi.w] = v3;
+#endif
     }
 
     // Write wall face indices

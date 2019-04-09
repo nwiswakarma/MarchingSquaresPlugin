@@ -47,6 +47,7 @@ private:
 
     TArray<FPrefabData> AppliedPrefabs;
     TArray< TArray<FPMUMeshSectionResource> > SectionGroups;
+    TArray< TArray<FPMUMeshSection> > MeshGroups;
 
     // Build map properties
 
@@ -168,12 +169,14 @@ public:
 
     FORCEINLINE bool HasSectionGroup(int32 FillType) const
     {
-        return SectionGroups.IsValidIndex(FillType);
+        //return SectionGroups.IsValidIndex(FillType);
+        return MeshGroups.IsValidIndex(FillType);
     }
 
     FORCEINLINE bool HasSection(int32 FillType, int32 Index) const
     {
-        return (SectionGroups.IsValidIndex(FillType) && SectionGroups[FillType].IsValidIndex(Index));
+        //return (SectionGroups.IsValidIndex(FillType) && SectionGroups[FillType].IsValidIndex(Index));
+        return (MeshGroups.IsValidIndex(FillType) && MeshGroups[FillType].IsValidIndex(Index));
     }
 
     FORCEINLINE const FPMUMeshSectionResource& GetSectionChecked(int32 FillType, int32 Index) const
@@ -186,17 +189,29 @@ public:
         return SectionGroups[FillType][Index];
     }
 
+    FORCEINLINE const FPMUMeshSection& GetMeshChecked(int32 FillType, int32 Index) const
+    {
+        return MeshGroups[FillType][Index];
+    }
+
+    FORCEINLINE FPMUMeshSection& GetMeshChecked(int32 FillType, int32 Index)
+    {
+        return MeshGroups[FillType][Index];
+    }
+
     void ClearSectionGroup(int32 FillType)
     {
         if (HasSectionGroup(FillType))
         {
-            SectionGroups[FillType].Empty();
+            //SectionGroups[FillType].Empty();
+            MeshGroups[FillType].Empty();
         }
     }
 
     void ClearSections()
     {
-        SectionGroups.Empty();
+        //SectionGroups.Empty();
+        MeshGroups.Empty();
     }
 
     // PREFAB FUNCTIONS

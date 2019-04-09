@@ -141,6 +141,9 @@ public:
     int32 GetSectionCount() const;
 
     UFUNCTION(BlueprintCallable)
+    FPMUMeshSectionRef GetSection(int32 FillType, int32 Index);
+
+    UFUNCTION(BlueprintCallable)
     FPMUMeshSectionResourceRef GetSectionResource(int32 FillType, int32 Index);
 
     UFUNCTION(BlueprintCallable)

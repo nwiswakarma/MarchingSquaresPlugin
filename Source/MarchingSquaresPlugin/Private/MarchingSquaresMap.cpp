@@ -174,12 +174,15 @@ public:
         "FillCellIdData", FillCellIdData
         )
 
-    RUL_DECLARE_SHADER_PARAMETERS_2(
+    RUL_DECLARE_SHADER_PARAMETERS_5(
         UAV,
         FShaderResourceParameter,
         FResourceId,
-        "OutVertexData", OutVertexData,
-        "OutIndexData",  OutIndexData
+        "OutPositionData", OutPositionData,
+        "OutTexCoordData", OutTexCoordData,
+        "OutTangentData",  OutTangentData,
+        "OutColorData",    OutColorData,
+        "OutIndexData",    OutIndexData
         )
 
     RUL_DECLARE_SHADER_PARAMETERS_9(
@@ -247,12 +250,15 @@ public:
         "CellCaseData",     CellCaseData
         )
 
-    RUL_DECLARE_SHADER_PARAMETERS_2(
+    RUL_DECLARE_SHADER_PARAMETERS_5(
         UAV,
         FShaderResourceParameter,
         FResourceId,
-        "OutVertexData", OutVertexData,
-        "OutIndexData",  OutIndexData
+        "OutPositionData", OutPositionData,
+        "OutTexCoordData", OutTexCoordData,
+        "OutTangentData",  OutTangentData,
+        "OutColorData",    OutColorData,
+        "OutIndexData",    OutIndexData
         )
 
     RUL_DECLARE_SHADER_PARAMETERS_9(
@@ -511,6 +517,7 @@ void FMarchingSquaresMap::GenerateMarchingCubes_RT(uint32 FillType, bool bInGene
 
     // Write cell case data
 
+    RHICmdList.BeginComputePass(TEXT("MarchingSquaresMapWriteCellCase"));
     {
         TMarchingSquaresMapWriteCellCaseCS<0>::FBaseType* ComputeShader;
 
@@ -533,6 +540,7 @@ void FMarchingSquaresMap::GenerateMarchingCubes_RT(uint32 FillType, bool bInGene
         ComputeShader->SetParameter(RHICmdList, TEXT("_FillType"), FillType);
         ComputeShader->DispatchAndClear(RHICmdList, Dimension.X, Dimension.Y, 1);
     }
+    RHICmdList.EndComputePass();
 
     // Scan cell geometry count data to generate geometry offset and sum data
 
@@ -627,27 +635,59 @@ void FMarchingSquaresMap::GenerateMarchingCubes_RT(uint32 FillType, bool bInGene
             );
     }
 
-    TShaderMapRef<FMarchingSquaresMapWriteCellCompactIdCS> CellWriteCompactIdCS(RHIShaderMap);
-    CellWriteCompactIdCS->SetShader(RHICmdList);
-    CellWriteCompactIdCS->BindSRV(RHICmdList, TEXT("GeomCountData"), GeomCountData.SRV);
-    CellWriteCompactIdCS->BindSRV(RHICmdList, TEXT("OffsetData"), OffsetData.SRV);
-    CellWriteCompactIdCS->BindUAV(RHICmdList, TEXT("OutFillCellIdData"), FillCellIdData.UAV);
-    CellWriteCompactIdCS->BindUAV(RHICmdList, TEXT("OutEdgeCellIdData"), EdgeCellIdData.UAV);
-    CellWriteCompactIdCS->SetParameter(RHICmdList, TEXT("_GDim"), Dimension);
-    CellWriteCompactIdCS->SetParameter(RHICmdList, TEXT("_LDim"), FIntPoint(BlockSize, BlockSize));
-    CellWriteCompactIdCS->DispatchAndClear(RHICmdList, Dimension.X, Dimension.Y, 1);
+    RHICmdList.BeginComputePass(TEXT("MarchingSquaresMapWriteCellCompactId"));
+    {
+        TShaderMapRef<FMarchingSquaresMapWriteCellCompactIdCS> CellWriteCompactIdCS(RHIShaderMap);
+        CellWriteCompactIdCS->SetShader(RHICmdList);
+        CellWriteCompactIdCS->BindSRV(RHICmdList, TEXT("GeomCountData"), GeomCountData.SRV);
+        CellWriteCompactIdCS->BindSRV(RHICmdList, TEXT("OffsetData"), OffsetData.SRV);
+        CellWriteCompactIdCS->BindUAV(RHICmdList, TEXT("OutFillCellIdData"), FillCellIdData.UAV);
+        CellWriteCompactIdCS->BindUAV(RHICmdList, TEXT("OutEdgeCellIdData"), EdgeCellIdData.UAV);
+        CellWriteCompactIdCS->SetParameter(RHICmdList, TEXT("_GDim"), Dimension);
+        CellWriteCompactIdCS->SetParameter(RHICmdList, TEXT("_LDim"), FIntPoint(BlockSize, BlockSize));
+        CellWriteCompactIdCS->DispatchAndClear(RHICmdList, Dimension.X, Dimension.Y, 1);
+    }
+    RHICmdList.EndComputePass();
 
-    FRULRWBufferStructured VData;
-    FRULRWBuffer           IData;
+    FRULRWBuffer PositionData;
+    FRULRWBuffer TangentData;
+    FRULRWBuffer TexCoordData;
+    FRULRWBuffer ColorData;
+    FRULRWBuffer IndexData;
 
-    VData.Initialize(
-        sizeof(FPMUPackedVertex),
-        TotalVCount,
+    PositionData.Initialize(
+        sizeof(float),
+        TotalVCount*3,
+        PF_R32_FLOAT,
         BUF_Static,
-        TEXT("Vertex Data")
+        TEXT("Position Data")
         );
 
-    IData.Initialize(
+    TangentData.Initialize(
+        sizeof(FRULAlignedUint),
+        TotalVCount*2,
+        PF_R32_UINT,
+        BUF_Static,
+        TEXT("Tangent Data")
+        );
+
+    TexCoordData.Initialize(
+        sizeof(FRULAlignedVector2D),
+        TotalVCount,
+        PF_G32R32F,
+        BUF_Static,
+        TEXT("UV Data")
+        );
+
+    ColorData.Initialize(
+        sizeof(FRULAlignedUint),
+        TotalVCount,
+        PF_R32_UINT,
+        BUF_Static,
+        TEXT("Color Data")
+        );
+
+    IndexData.Initialize(
         sizeof(FIndexData::ElementType),
         TotalICount,
         PF_R32_UINT,
@@ -657,6 +697,8 @@ void FMarchingSquaresMap::GenerateMarchingCubes_RT(uint32 FillType, bool bInGene
 
     if (FillCellCount > 0)
     {
+        RHICmdList.BeginComputePass(TEXT("MarchingSquaresMapTriangulateFillCell"));
+
         TMarchingSquaresMapTriangulateFillCellCS<0>::FBaseType* ComputeShader;
 
         if (bUseDualMesh)
@@ -686,8 +728,11 @@ void FMarchingSquaresMap::GenerateMarchingCubes_RT(uint32 FillType, bool bInGene
         ComputeShader->BindSRV(RHICmdList, TEXT("OffsetData"),     OffsetData.SRV);
         ComputeShader->BindSRV(RHICmdList, TEXT("SumData"),        SumData.SRV);
         ComputeShader->BindSRV(RHICmdList, TEXT("FillCellIdData"), FillCellIdData.SRV);
-        ComputeShader->BindUAV(RHICmdList, TEXT("OutVertexData"), VData.UAV);
-        ComputeShader->BindUAV(RHICmdList, TEXT("OutIndexData"),  IData.UAV);
+        ComputeShader->BindUAV(RHICmdList, TEXT("OutPositionData"), PositionData.UAV);
+        ComputeShader->BindUAV(RHICmdList, TEXT("OutTangentData"),  TangentData.UAV);
+        ComputeShader->BindUAV(RHICmdList, TEXT("OutTexCoordData"), TexCoordData.UAV);
+        ComputeShader->BindUAV(RHICmdList, TEXT("OutColorData"),    ColorData.UAV);
+        ComputeShader->BindUAV(RHICmdList, TEXT("OutIndexData"),    IndexData.UAV);
         ComputeShader->SetParameter(RHICmdList, TEXT("_GDim"),          Dimension);
         ComputeShader->SetParameter(RHICmdList, TEXT("_LDim"),          FIntPoint(BlockSize, BlockSize));
         ComputeShader->SetParameter(RHICmdList, TEXT("_GeomCount"),     GeomCount);
@@ -698,10 +743,14 @@ void FMarchingSquaresMap::GenerateMarchingCubes_RT(uint32 FillType, bool bInGene
         ComputeShader->SetParameter(RHICmdList, TEXT("_HeightOffset"),  HeightOffset);
         ComputeShader->SetParameter(RHICmdList, TEXT("_Color"),         FVector4(1,0,0,1));
         ComputeShader->DispatchAndClear(RHICmdList, FillCellCount, 1, 1);
+
+        RHICmdList.EndComputePass();
     }
 
     if (EdgeCellCount > 0)
     {
+        RHICmdList.BeginComputePass(TEXT("MarchingSquaresMapTriangulateEdgeCell"));
+
         TMarchingSquaresMapTriangulateEdgeCellCS<0>::FBaseType* ComputeShader;
 
         if (bUseDualMesh)
@@ -733,8 +782,11 @@ void FMarchingSquaresMap::GenerateMarchingCubes_RT(uint32 FillType, bool bInGene
         ComputeShader->BindSRV(RHICmdList, TEXT("SumData"),          SumData.SRV);
         ComputeShader->BindSRV(RHICmdList, TEXT("EdgeCellIdData"),   EdgeCellIdData.SRV);
         ComputeShader->BindSRV(RHICmdList, TEXT("CellCaseData"),     CellCaseData.SRV);
-        ComputeShader->BindUAV(RHICmdList, TEXT("OutVertexData"), VData.UAV);
-        ComputeShader->BindUAV(RHICmdList, TEXT("OutIndexData"),  IData.UAV);
+        ComputeShader->BindUAV(RHICmdList, TEXT("OutPositionData"), PositionData.UAV);
+        ComputeShader->BindUAV(RHICmdList, TEXT("OutTangentData"),  TangentData.UAV);
+        ComputeShader->BindUAV(RHICmdList, TEXT("OutTexCoordData"), TexCoordData.UAV);
+        ComputeShader->BindUAV(RHICmdList, TEXT("OutColorData"),    ColorData.UAV);
+        ComputeShader->BindUAV(RHICmdList, TEXT("OutIndexData"),    IndexData.UAV);
         ComputeShader->SetParameter(RHICmdList, TEXT("_GDim"),          Dimension);
         ComputeShader->SetParameter(RHICmdList, TEXT("_LDim"),          FIntPoint(BlockSize, BlockSize));
         ComputeShader->SetParameter(RHICmdList, TEXT("_GeomCount"),     GeomCount);
@@ -745,6 +797,8 @@ void FMarchingSquaresMap::GenerateMarchingCubes_RT(uint32 FillType, bool bInGene
         ComputeShader->SetParameter(RHICmdList, TEXT("_HeightOffset"),  HeightOffset);
         ComputeShader->SetParameter(RHICmdList, TEXT("_Color"),         FVector4(1,0,0,1));
         ComputeShader->DispatchAndClear(RHICmdList, EdgeCellCount, 1, 1);
+
+        RHICmdList.EndComputePass();
     }
 
     // Construct mesh sections
@@ -759,19 +813,27 @@ void FMarchingSquaresMap::GenerateMarchingCubes_RT(uint32 FillType, bool bInGene
         TotalGridCount *= 2;
     }
 
-    if (! SectionGroups.IsValidIndex(FillType))
+    if (! MeshGroups.IsValidIndex(FillType))
     {
-        SectionGroups.SetNum(FillType + 1, false);
+        MeshGroups.SetNum(FillType+1, false);
     }
 
-    TArray<FPMUMeshSectionResource>& MeshSections(SectionGroups[FillType]);
+    TArray<FPMUMeshSection>& MeshSections(MeshGroups[FillType]);
 
     MeshSections.Reset(TotalGridCount);
     MeshSections.SetNum(TotalGridCount);
 
-    uint8* VDataPtr = reinterpret_cast<uint8*>(RHILockStructuredBuffer(VData.Buffer, 0, VData.Buffer->GetSize(), RLM_ReadOnly));
-    uint8* IDataPtr = reinterpret_cast<uint8*>(RHILockVertexBuffer(IData.Buffer, 0, IData.Buffer->GetSize(), RLM_ReadOnly));
-    const int32 IDataStride = sizeof(FIndexData::ElementType);
+    uint8* PositionDataPtr = reinterpret_cast<uint8*>(RHILockVertexBuffer(PositionData.Buffer, 0, PositionData.Buffer->GetSize(), RLM_ReadOnly));
+    uint8* TangentDataPtr  = reinterpret_cast<uint8*>(RHILockVertexBuffer(TangentData.Buffer, 0, TangentData.Buffer->GetSize(), RLM_ReadOnly));
+    uint8* TexCoordDataPtr = reinterpret_cast<uint8*>(RHILockVertexBuffer(TexCoordData.Buffer, 0, TexCoordData.Buffer->GetSize(), RLM_ReadOnly));
+    uint8* ColorDataPtr    = reinterpret_cast<uint8*>(RHILockVertexBuffer(ColorData.Buffer, 0, ColorData.Buffer->GetSize(), RLM_ReadOnly));
+    uint8* IndexDataPtr    = reinterpret_cast<uint8*>(RHILockVertexBuffer(IndexData.Buffer, 0, IndexData.Buffer->GetSize(), RLM_ReadOnly));
+
+    const int32 PositionDataStride = sizeof(FRULAlignedVector);
+    const int32 TangentDataStride  = sizeof(FRULAlignedUintPoint);
+    const int32 TexCoordDataStride = sizeof(FRULAlignedVector2D);
+    const int32 ColorDataStride    = sizeof(FRULAlignedUint);
+    const int32 IndexDataStride    = sizeof(FIndexData::ElementType);
 
     for (int32 gy=0; gy<GridCountY; ++gy)
     for (int32 gx=0; gx<GridCountX; ++gx)
@@ -831,67 +893,100 @@ void FMarchingSquaresMap::GenerateMarchingCubes_RT(uint32 FillType, bool bInGene
         // Copy surface geometry
 
         {
-            FPMUMeshSectionResource& Section(MeshSections[i]);
+            FPMUMeshSection& Section(MeshSections[i]);
+
+            TArray<FVector>&   SectionPositionData(Section.Positions);
+            TArray<uint32>&    SectionTangentData(Section.Tangents);
+            TArray<FVector2D>& SectionTexCoordData(Section.UVs);
+            TArray<FColor>&    SectionColorData(Section.Colors);
+            TArray<uint32>&    SectionIndexData(Section.Indices);
+
+            SectionPositionData.SetNumUninitialized(GVCount);
+            SectionTangentData.SetNumUninitialized(GVCount*2);
+            SectionTexCoordData.SetNumUninitialized(GVCount);
+            SectionColorData.SetNumUninitialized(GVCount);
+            SectionIndexData.SetNumUninitialized(GICount);
+
+            void* SectionPositionDataPtr = SectionPositionData.GetData();
+            void* SectionTangentDataPtr = SectionTangentData.GetData();
+            void* SectionTexCoordDataPtr = SectionTexCoordData.GetData();
+            void* SectionColorDataPtr = SectionColorData.GetData();
+            void* SectionIndexDataPtr = SectionIndexData.GetData();
+
+            uint32 PositionByteOffset = GVOffset * PositionDataStride;
+            uint32 TangentByteOffset  = GVOffset * TangentDataStride;
+            uint32 TexCoordByteOffset = GVOffset * TexCoordDataStride;
+            uint32 ColorByteOffset    = GVOffset * ColorDataStride;
+            uint32 IndexByteOffset    = GIOffset * IndexDataStride;
+
+            uint32 PositionByteCount = GVCount * PositionDataStride;
+            uint32 TangentByteCount  = GVCount * TangentDataStride;
+            uint32 TexCoordByteCount = GVCount * TexCoordDataStride;
+            uint32 ColorByteCount    = GVCount * ColorDataStride;
+            uint32 IndexByteCount    = GICount * IndexDataStride;
+
+            FMemory::Memcpy(SectionPositionDataPtr, PositionDataPtr+PositionByteOffset, PositionByteCount);
+            FMemory::Memcpy(SectionTangentDataPtr, TangentDataPtr+TangentByteOffset, TangentByteCount);
+            FMemory::Memcpy(SectionTexCoordDataPtr, TexCoordDataPtr+TexCoordByteOffset, TexCoordByteCount);
+            FMemory::Memcpy(SectionColorDataPtr, ColorDataPtr+ColorByteOffset, ColorByteCount);
+            FMemory::Memcpy(SectionIndexDataPtr, IndexDataPtr+IndexByteOffset, IndexByteCount);
 
             Section.bSectionVisible = bValidSection;
-            Section.VertexCount = GVCount;
-            Section.IndexCount  = GICount;
-
-            auto& SectionVData(Section.Buffer.GetVBArray());
-            auto& SectionIData(Section.Buffer.GetIBArray());
-
-            SectionVData.SetNumUninitialized(GVCount);
-            SectionIData.SetNumUninitialized(GICount);
-
-            void* SectionVDataPtr = SectionVData.GetData();
-            void* SectionIDataPtr = SectionIData.GetData();
-
-            uint32 VByteOffset = GVOffset * VData.Buffer->GetStride();
-            uint32 IByteOffset = GIOffset * IDataStride;
-
-            uint32 VByteCount = GVCount * VData.Buffer->GetStride();
-            uint32 IByteCount = GICount * IDataStride;
-
-            FMemory::Memcpy(SectionVDataPtr, VDataPtr+VByteOffset, VByteCount);
-            FMemory::Memcpy(SectionIDataPtr, IDataPtr+IByteOffset, IByteCount);
-
-            Section.LocalBounds = LocalBounds;
+            Section.SectionLocalBox = LocalBounds;
         }
 
         // Copy extrude geometry if generating dual mesh
 
         if (bUseDualMesh)
         {
-            FPMUMeshSectionResource& Section(MeshSections[i+GridCount]);
+            FPMUMeshSection& Section(MeshSections[i+GridCount]);
+
+            TArray<FVector>&   SectionPositionData(Section.Positions);
+            TArray<uint32>&    SectionTangentData(Section.Tangents);
+            TArray<FVector2D>& SectionTexCoordData(Section.UVs);
+            TArray<FColor>&    SectionColorData(Section.Colors);
+            TArray<uint32>&    SectionIndexData(Section.Indices);
+
+            SectionPositionData.SetNumUninitialized(GVCount);
+            SectionTangentData.SetNumUninitialized(GVCount*2);
+            SectionTexCoordData.SetNumUninitialized(GVCount);
+            SectionColorData.SetNumUninitialized(GVCount);
+            SectionIndexData.SetNumUninitialized(GICount);
+
+            void* SectionPositionDataPtr = SectionPositionData.GetData();
+            void* SectionTangentDataPtr = SectionTangentData.GetData();
+            void* SectionTexCoordDataPtr = SectionTexCoordData.GetData();
+            void* SectionColorDataPtr = SectionColorData.GetData();
+            void* SectionIndexDataPtr = SectionIndexData.GetData();
+
+            uint32 PositionByteOffset = (GVOffset+VCount) * PositionDataStride;
+            uint32 TangentByteOffset  = (GVOffset+VCount) * TangentDataStride;
+            uint32 TexCoordByteOffset = (GVOffset+VCount) * TexCoordDataStride;
+            uint32 ColorByteOffset    = (GVOffset+VCount) * ColorDataStride;
+            uint32 IndexByteOffset    = (GIOffset+ICount) * IndexDataStride;
+
+            uint32 PositionByteCount = GVCount * PositionDataStride;
+            uint32 TangentByteCount  = GVCount * TangentDataStride;
+            uint32 TexCoordByteCount = GVCount * TexCoordDataStride;
+            uint32 ColorByteCount    = GVCount * ColorDataStride;
+            uint32 IndexByteCount    = GICount * IndexDataStride;
+
+            FMemory::Memcpy(SectionPositionDataPtr, PositionDataPtr+PositionByteOffset, PositionByteCount);
+            FMemory::Memcpy(SectionTangentDataPtr, TangentDataPtr+TangentByteOffset, TangentByteCount);
+            FMemory::Memcpy(SectionTexCoordDataPtr, TexCoordDataPtr+TexCoordByteOffset, TexCoordByteCount);
+            FMemory::Memcpy(SectionColorDataPtr, ColorDataPtr+ColorByteOffset, ColorByteCount);
+            FMemory::Memcpy(SectionIndexDataPtr, IndexDataPtr+IndexByteOffset, IndexByteCount);
 
             Section.bSectionVisible = bValidSection;
-            Section.VertexCount = GVCount;
-            Section.IndexCount  = GICount;
-
-            auto& SectionVData(Section.Buffer.GetVBArray());
-            auto& SectionIData(Section.Buffer.GetIBArray());
-
-            SectionVData.SetNumUninitialized(GVCount);
-            SectionIData.SetNumUninitialized(GICount);
-
-            void* SectionVDataPtr = SectionVData.GetData();
-            void* SectionIDataPtr = SectionIData.GetData();
-
-            uint32 VByteOffset = (GVOffset+VCount) * VData.Buffer->GetStride();
-            uint32 IByteOffset = (GIOffset+ICount) * IDataStride;
-
-            uint32 VByteCount = GVCount * VData.Buffer->GetStride();
-            uint32 IByteCount = GICount * IDataStride;
-
-            FMemory::Memcpy(SectionVDataPtr, VDataPtr+VByteOffset, VByteCount);
-            FMemory::Memcpy(SectionIDataPtr, IDataPtr+IByteOffset, IByteCount);
-
-            Section.LocalBounds = LocalBounds;
+            Section.SectionLocalBox = LocalBounds;
         }
     }
 
-    RHIUnlockVertexBuffer(IData.Buffer);
-    RHIUnlockStructuredBuffer(VData.Buffer);
+    RHIUnlockVertexBuffer(IndexData.Buffer);
+    RHIUnlockVertexBuffer(ColorData.Buffer);
+    RHIUnlockVertexBuffer(TexCoordData.Buffer);
+    RHIUnlockVertexBuffer(TangentData.Buffer);
+    RHIUnlockVertexBuffer(PositionData.Buffer);
 }
 
 //bool FMarchingSquaresMap::IsPrefabValid(int32 PrefabIndex, int32 LODIndex, int32 SectionIndex) const

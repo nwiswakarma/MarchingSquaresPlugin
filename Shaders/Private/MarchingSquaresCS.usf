@@ -213,23 +213,27 @@ float  _HeightOffset;
 float2 _HeightScale;
 float4 _Color;
 
-Buffer<uint>               VoxelStateData;
-Buffer<uint>               VoxelFeatureData;
-Buffer<uint>               FillCellIdData;
-Buffer<uint>               EdgeCellIdData;
-Buffer<uint>               CellCaseData;
+Buffer<uint> VoxelStateData;
+Buffer<uint> VoxelFeatureData;
+Buffer<uint> FillCellIdData;
+Buffer<uint> EdgeCellIdData;
+Buffer<uint> CellCaseData;
 
-StructuredBuffer<uint4>    GeomCountData;
-StructuredBuffer<uint4>    OffsetData;
-StructuredBuffer<uint4>    SumData;
+StructuredBuffer<uint4> GeomCountData;
+StructuredBuffer<uint4> OffsetData;
+StructuredBuffer<uint4> SumData;
 
-RWBuffer<uint>             OutIndexData;
-RWBuffer<uint>             OutCellCaseData;
-RWBuffer<uint>             OutFillCellIdData;
-RWBuffer<uint>             OutEdgeCellIdData;
+RWBuffer<uint> OutIndexData;
+RWBuffer<uint> OutCellCaseData;
+RWBuffer<uint> OutFillCellIdData;
+RWBuffer<uint> OutEdgeCellIdData;
 
-RWStructuredBuffer<Vertex> OutVertexData;
-RWStructuredBuffer<uint4>  OutGeomCountData;
+RWBuffer<float>  OutPositionData;
+RWBuffer<float2> OutTexCoordData;
+RWBuffer<uint>   OutTangentData;
+RWBuffer<uint>   OutColorData;
+
+RWStructuredBuffer<uint4> OutGeomCountData;
 
 RWTexture2D<float4> OutDebugTexture;
 
