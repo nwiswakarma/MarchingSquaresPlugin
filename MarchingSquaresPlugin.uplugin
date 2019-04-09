@@ -1,0 +1,34 @@
+{
+	"FileVersion" : 1,
+	"Version" : 1,
+	"VersionName" : "1.0.0",
+	"FriendlyName" : "Marching Squares Plugin",
+	"CreatedBy" : "Nuraga Wiswakarma", 
+	"Description" : "",
+	"Category" : "Programming",
+	"EnabledByDefault" : "true",
+	"CanContainContent" : "true",
+	"Modules" :
+	[		
+		{
+			"Name" : "MarchingSquaresPlugin",
+			"Type" : "Runtime",
+            "LoadingPhase": "PostConfigInit"
+		}
+	],
+	"Plugins":
+    [
+		{
+			"Name" : "ProceduralMeshUtility",
+			"Enabled": true
+		},
+		{
+			"Name" : "RenderingUtilityLibrary",
+			"Enabled": true
+		},
+		{
+			"Name" : "GenericWorkerThread",
+			"Enabled": true
+		}
+	]
+}
