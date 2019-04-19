@@ -118,7 +118,7 @@ public:
     }
 
     UFUNCTION(BlueprintCallable)
-    void GetMapDimensionData(FIntPoint& MapDimensionI, FVector2D& MapDimensionV, FIntPoint& VoxDimensionI, FVector2D& VoxDimensionV) const;
+    void GetMapDimensionData(FIntPoint& MapDimensionI, FVector2D& MapDimensionV, FIntPoint& VoxDimensionI, FVector2D& VoxDimensionV);
 
     UFUNCTION(BlueprintCallable)
     void BuildMap(int32 FillType, bool bGenerateWalls);
@@ -143,19 +143,10 @@ public:
     UFUNCTION(BlueprintCallable)
     FPMUMeshSectionRef GetSection(int32 FillType, int32 Index);
 
-    UFUNCTION(BlueprintCallable)
-    FPMUMeshSectionResourceRef GetSectionResource(int32 FillType, int32 Index);
-
-    UFUNCTION(BlueprintCallable)
-    void CopySectionResource(FPMUMeshSectionResourceRef TargetSection, int32 FillType, int32 Index) const;
-
-    UFUNCTION(BlueprintCallable)
-    void ClearSectionGroupResource(int32 FillType);
-
     // PREFAB FUNCTIONS
 
-    UFUNCTION(BlueprintCallable)
-    bool HasPrefab(int32 PrefabIndex) const;
+    //UFUNCTION(BlueprintCallable)
+    //bool HasPrefab(int32 PrefabIndex) const;
 
     //UFUNCTION(BlueprintCallable)
     //TArray<FBox2D> GetPrefabBounds(int32 PrefabIndex) const;

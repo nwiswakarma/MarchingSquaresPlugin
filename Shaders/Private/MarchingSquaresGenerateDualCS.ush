@@ -107,22 +107,20 @@ void GenerateFillCell(uint id)
     uint i0 = vertexOffset;
     uint i1 = i0 + VERTEX_COUNT;
 
-    OutPositionData[(i0*3)  ] = p0.x;
-    OutPositionData[(i0*3)+1] = p0.y;
-    OutPositionData[(i0*3)+2] = p0.z;
-
-    OutPositionData[(i1*3)  ] = p1.x;
-    OutPositionData[(i1*3)+1] = p1.y;
-    OutPositionData[(i1*3)+2] = p1.z;
+    OutPositionData.Store3(i0*POS_STRIDE, asuint(p0));
+    OutPositionData.Store3(i1*POS_STRIDE, asuint(p1));
 
     OutTexCoordData[i0] = uv;
     OutTexCoordData[i1] = uv;
 
-    OutTangentData[(i0*2)  ] = ut0;
-    OutTangentData[(i0*2)+1] = un0;
+    //OutTangentData[(i0*2)  ] = ut0;
+    //OutTangentData[(i0*2)+1] = un0;
 
-    OutTangentData[(i1*2)  ] = ut1;
-    OutTangentData[(i1*2)+1] = un1;
+    //OutTangentData[(i1*2)  ] = ut1;
+    //OutTangentData[(i1*2)+1] = un1;
+
+    OutTangentData.Store2(i0*TAN_STRIDE, uint2(ut0, un0));
+    OutTangentData.Store2(i1*TAN_STRIDE, uint2(ut1, un1));
 
     OutColorData[i0] = color;
     OutColorData[i1] = color;
@@ -292,22 +290,20 @@ void GenerateEdgeCell(uint id)
         uint i0 = vertexOffset + vertIdx;
         uint i1 = i0 + VERTEX_COUNT;
 
-        OutPositionData[(i0*3)  ] = p0.x;
-        OutPositionData[(i0*3)+1] = p0.y;
-        OutPositionData[(i0*3)+2] = p0.z;
-
-        OutPositionData[(i1*3)  ] = p1.x;
-        OutPositionData[(i1*3)+1] = p1.y;
-        OutPositionData[(i1*3)+2] = p1.z;
+        OutPositionData.Store3(i0*POS_STRIDE, asuint(p0));
+        OutPositionData.Store3(i1*POS_STRIDE, asuint(p1));
 
         OutTexCoordData[i0] = uv;
         OutTexCoordData[i1] = uv;
 
-        OutTangentData[(i0*2)  ] = ut0;
-        OutTangentData[(i0*2)+1] = un0;
+        //OutTangentData[(i0*2)  ] = ut0;
+        //OutTangentData[(i0*2)+1] = un0;
 
-        OutTangentData[(i1*2)  ] = ut1;
-        OutTangentData[(i1*2)+1] = un1;
+        //OutTangentData[(i1*2)  ] = ut1;
+        //OutTangentData[(i1*2)+1] = un1;
+
+        OutTangentData.Store2(i0*TAN_STRIDE, uint2(ut0, un0));
+        OutTangentData.Store2(i1*TAN_STRIDE, uint2(ut1, un1));
 
         OutColorData[i0] = color;
         OutColorData[i1] = color;

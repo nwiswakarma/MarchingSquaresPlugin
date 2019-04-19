@@ -107,22 +107,20 @@ void GenerateFillCell(uint id)
     uint i0 = vertexOffset;
     uint i1 = i0 + 1;
 
-    OutPositionData[(i0*3)  ] = p0.x;
-    OutPositionData[(i0*3)+1] = p0.y;
-    OutPositionData[(i0*3)+2] = p0.z;
-
-    OutPositionData[(i1*3)  ] = p1.x;
-    OutPositionData[(i1*3)+1] = p1.y;
-    OutPositionData[(i1*3)+2] = p1.z;
+    OutPositionData.Store3(i0*POS_STRIDE, asuint(p0));
+    OutPositionData.Store3(i1*POS_STRIDE, asuint(p1));
 
     OutTexCoordData[i0] = uv;
     OutTexCoordData[i1] = uv;
 
-    OutTangentData[(i0*2)  ] = ut0;
-    OutTangentData[(i0*2)+1] = un0;
+    //OutTangentData[(i0*2)  ] = ut0;
+    //OutTangentData[(i0*2)+1] = un0;
 
-    OutTangentData[(i1*2)  ] = ut1;
-    OutTangentData[(i1*2)+1] = un1;
+    //OutTangentData[(i1*2)  ] = ut1;
+    //OutTangentData[(i1*2)+1] = un1;
+
+    OutTangentData.Store2(i0*TAN_STRIDE, uint2(ut0, un0));
+    OutTangentData.Store2(i1*TAN_STRIDE, uint2(ut1, un1));
 
     OutColorData[i0] = color;
     OutColorData[i1] = color;
@@ -306,22 +304,20 @@ void GenerateEdgeCell(uint id)
         uint i0 = vertexOffset + vertIdx*2;
         uint i1 = i0 + 1;
 
-        OutPositionData[(i0*3)  ] = p0.x;
-        OutPositionData[(i0*3)+1] = p0.y;
-        OutPositionData[(i0*3)+2] = p0.z;
-
-        OutPositionData[(i1*3)  ] = p1.x;
-        OutPositionData[(i1*3)+1] = p1.y;
-        OutPositionData[(i1*3)+2] = p1.z;
+        OutPositionData.Store3(i0*POS_STRIDE, asuint(p0));
+        OutPositionData.Store3(i1*POS_STRIDE, asuint(p1));
 
         OutTexCoordData[i0] = uv;
         OutTexCoordData[i1] = uv;
 
-        OutTangentData[(i0*2)  ] = ut0;
-        OutTangentData[(i0*2)+1] = un0;
+        //OutTangentData[(i0*2)  ] = ut0;
+        //OutTangentData[(i0*2)+1] = un0;
 
-        OutTangentData[(i1*2)  ] = ut1;
-        OutTangentData[(i1*2)+1] = un1;
+        //OutTangentData[(i1*2)  ] = ut1;
+        //OutTangentData[(i1*2)+1] = un1;
+
+        OutTangentData.Store2(i0*TAN_STRIDE, uint2(ut0, un0));
+        OutTangentData.Store2(i1*TAN_STRIDE, uint2(ut1, un1));
 
         OutColorData[i0] = color;
         OutColorData[i1] = color;
@@ -406,34 +402,17 @@ void GenerateEdgeCell(uint id)
 #if 1
         // Copy wall edge vertices
 
-        //Vertex v0 = OutVertexData[vi.x];
-        //Vertex v1 = OutVertexData[vi.y];
+        float3 wp0 = asfloat(OutPositionData.Load3(vi.x*POS_STRIDE));
+        float3 wp1 = asfloat(OutPositionData.Load3(vi.y*POS_STRIDE));
 
-        float3 wp0 = {
-            OutPositionData[(vi.x*3)  ],
-            OutPositionData[(vi.x*3)+1],
-            OutPositionData[(vi.x*3)+2],
-            };
+        uint wn0 = OutTangentData.Load((vi.x*2+1)*4);
+        uint wn1 = OutTangentData.Load((vi.y*2+1)*4);
 
-        float3 wp1 = {
-            OutPositionData[(vi.y*3)  ],
-            OutPositionData[(vi.y*3)+1],
-            OutPositionData[(vi.y*3)+2],
-            };
+        OutPositionData.Store3(wi.x*POS_STRIDE, asuint(wp0));
+        OutPositionData.Store3(wi.y*POS_STRIDE, asuint(wp1));
 
-        OutPositionData[(wi.x*3)  ] = wp0.x;
-        OutPositionData[(wi.x*3)+1] = wp0.y;
-        OutPositionData[(wi.x*3)+2] = wp0.z;
-
-        OutPositionData[(wi.y*3)  ] = wp1.x;
-        OutPositionData[(wi.y*3)+1] = wp1.y;
-        OutPositionData[(wi.y*3)+2] = wp1.z;
-
-        OutTangentData[(wi.x*2)  ] = wallTangent;
-        OutTangentData[(wi.x*2)+1] = OutTangentData[(vi.y*2)+1];
-
-        OutTangentData[(wi.y*2)  ] = wallTangent;
-        OutTangentData[(wi.y*2)+1] = OutTangentData[(vi.y*2)+1];
+        OutTangentData.Store2(wi.x*TAN_STRIDE, uint2(wallTangent, wn0));
+        OutTangentData.Store2(wi.y*TAN_STRIDE, uint2(wallTangent, wn1));
 
         OutTexCoordData[wi.x] = float2(0,1);
         OutTexCoordData[wi.y] = float2(0,1);
@@ -443,36 +422,20 @@ void GenerateEdgeCell(uint id)
 
         // Copy inner wall vertices
 
-        //Vertex v2 = v0;
-        //Vertex v3 = v1;
+        float3 wp2 = { wp0.xy, wp0.z*.5f };
+        float3 wp3 = { wp1.xy, wp1.z*.5f };
 
-        OutPositionData[(wi.z*3)  ] = wp0.x;
-        OutPositionData[(wi.z*3)+1] = wp0.y;
-        OutPositionData[(wi.z*3)+2] = wp0.z * .5f;
+        OutPositionData.Store3(wi.z*POS_STRIDE, asuint(wp2));
+        OutPositionData.Store3(wi.w*POS_STRIDE, asuint(wp3));
 
-        OutPositionData[(wi.w*3)  ] = wp1.x;
-        OutPositionData[(wi.w*3)+1] = wp1.y;
-        OutPositionData[(wi.w*3)+2] = wp1.z * .5f;
-
-        OutTangentData[(wi.z*2)  ] = wallTangent;
-        OutTangentData[(wi.z*2)+1] = edgeNrm;
-
-        OutTangentData[(wi.w*2)  ] = wallTangent;
-        OutTangentData[(wi.w*2)+1] = edgeNrm;
+        OutTangentData.Store2(wi.z*TAN_STRIDE, uint2(wallTangent, edgeNrm));
+        OutTangentData.Store2(wi.w*TAN_STRIDE, uint2(wallTangent, edgeNrm));
 
         OutTexCoordData[wi.z] = float2(0,1.f/3.f);
         OutTexCoordData[wi.w] = float2(0,2.f/3.f);
 
         OutColorData[wi.z] = OutColorData[vi.x] | (0xFF<<24);
         OutColorData[wi.w] = OutColorData[vi.y] | (0xFF<<24);
-
-        // Write vertex data
-
-        //OutVertexData[wi.x] = v0;
-        //OutVertexData[wi.y] = v1;
-
-        //OutVertexData[wi.z] = v2;
-        //OutVertexData[wi.w] = v3;
 #endif
     }
 

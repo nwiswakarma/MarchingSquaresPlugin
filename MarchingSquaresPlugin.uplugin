@@ -19,6 +19,10 @@
 	"Plugins":
     [
 		{
+			"Name" : "GenericWorkerThread",
+			"Enabled": true
+		},
+		{
 			"Name" : "ProceduralMeshUtility",
 			"Enabled": true
 		},
@@ -27,7 +31,7 @@
 			"Enabled": true
 		},
 		{
-			"Name" : "GenericWorkerThread",
+			"Name" : "EarcutPlugin",
 			"Enabled": true
 		}
 	]

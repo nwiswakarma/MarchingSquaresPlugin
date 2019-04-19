@@ -82,7 +82,7 @@ void UMarchingSquaresMapRef::OnBuildMapDoneCallback(bool bBuildMapResult, uint32
     TickManager.EnqueueTickCallback(TickCallback);
 }
 
-void UMarchingSquaresMapRef::GetMapDimensionData(FIntPoint& MapDimensionI, FVector2D& MapDimensionV, FIntPoint& VoxDimensionI, FVector2D& VoxDimensionV) const
+void UMarchingSquaresMapRef::GetMapDimensionData(FIntPoint& MapDimensionI, FVector2D& MapDimensionV, FIntPoint& VoxDimensionI, FVector2D& VoxDimensionV)
 {
     MapDimensionI = FIntPoint(DimX, DimY);
     MapDimensionV = FVector2D(DimX, DimY);
@@ -122,8 +122,8 @@ bool UMarchingSquaresMapRef::HasSectionGeometry(int32 FillType, int32 Index) con
 {
     if (HasSection(FillType, Index))
     {
-        const FPMUMeshSectionResource& Resource(Map.GetSectionChecked(FillType, Index));
-        return Resource.GetVertexCount() > 0 && Resource.GetIndexCount() > 0;
+        const FPMUMeshSection& Section(Map.GetSectionChecked(FillType, Index));
+        return Section.HasGeometry();
     }
 
     return false;
@@ -139,28 +139,8 @@ int32 UMarchingSquaresMapRef::GetSectionCount() const
 FPMUMeshSectionRef UMarchingSquaresMapRef::GetSection(int32 FillType, int32 Index)
 {
     return Map.HasSection(FillType, Index)
-        ? FPMUMeshSectionRef(Map.GetMeshChecked(FillType, Index))
+        ? FPMUMeshSectionRef(Map.GetSectionChecked(FillType, Index))
         : FPMUMeshSectionRef();
-}
-
-FPMUMeshSectionResourceRef UMarchingSquaresMapRef::GetSectionResource(int32 FillType, int32 Index)
-{
-    return Map.HasSection(FillType, Index)
-        ? FPMUMeshSectionResourceRef(Map.GetSectionChecked(FillType, Index))
-        : FPMUMeshSectionResourceRef();
-}
-
-void UMarchingSquaresMapRef::CopySectionResource(FPMUMeshSectionResourceRef TargetSection, int32 FillType, int32 Index) const
-{
-    if (TargetSection.IsValid() && Map.HasSection(FillType, Index))
-    {
-        (*TargetSection.SectionPtr) = Map.GetSectionChecked(FillType, Index);
-    }
-}
-
-void UMarchingSquaresMapRef::ClearSectionGroupResource(int32 FillType)
-{
-    Map.ClearSectionGroup(FillType);
 }
 
 // PREFAB FUNCTIONS
@@ -174,11 +154,10 @@ void UMarchingSquaresMapRef::ClearSectionGroupResource(int32 FillType)
 //    return TArray<FBox2D>();
 //}
 
-bool UMarchingSquaresMapRef::HasPrefab(int32 PrefabIndex) const
-{
-    //return HasValidMap() ? Map.HasPrefab(PrefabIndex) : false;
-    return false;
-}
+//bool UMarchingSquaresMapRef::HasPrefab(int32 PrefabIndex) const
+//{
+//    return HasValidMap() ? Map.HasPrefab(PrefabIndex) : false;
+//}
 
 //bool UMarchingSquaresMapRef::ApplyPrefab(
 //    int32 PrefabIndex,

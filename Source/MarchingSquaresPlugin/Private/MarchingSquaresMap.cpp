@@ -33,6 +33,7 @@
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshSocket.h"
 #include "Engine/TextureRenderTarget2D.h"
+#include "RHIUtilities.h"
 
 #include "MarchingSquaresPlugin.h"
 #include "RenderingUtilityLibrary.h"
@@ -649,27 +650,15 @@ void FMarchingSquaresMap::GenerateMarchingCubes_RT(uint32 FillType, bool bInGene
     }
     RHICmdList.EndComputePass();
 
-    FRULRWBuffer PositionData;
-    FRULRWBuffer TangentData;
+    FRWByteAddressBuffer PositionData;
+    FRWByteAddressBuffer TangentData;
     FRULRWBuffer TexCoordData;
     FRULRWBuffer ColorData;
     FRULRWBuffer IndexData;
 
-    PositionData.Initialize(
-        sizeof(float),
-        TotalVCount*3,
-        PF_R32_FLOAT,
-        BUF_Static,
-        TEXT("Position Data")
-        );
+    PositionData.Initialize(TotalVCount*3*sizeof(float), BUF_Static);
 
-    TangentData.Initialize(
-        sizeof(FRULAlignedUint),
-        TotalVCount*2,
-        PF_R32_UINT,
-        BUF_Static,
-        TEXT("Tangent Data")
-        );
+    TangentData.Initialize(TotalVCount*2*sizeof(FRULAlignedUint), BUF_Static);
 
     TexCoordData.Initialize(
         sizeof(FRULAlignedVector2D),
@@ -813,18 +802,18 @@ void FMarchingSquaresMap::GenerateMarchingCubes_RT(uint32 FillType, bool bInGene
         TotalGridCount *= 2;
     }
 
-    if (! MeshGroups.IsValidIndex(FillType))
+    if (! SectionGroups.IsValidIndex(FillType))
     {
-        MeshGroups.SetNum(FillType+1, false);
+        SectionGroups.SetNum(FillType+1, false);
     }
 
-    TArray<FPMUMeshSection>& MeshSections(MeshGroups[FillType]);
+    TArray<FPMUMeshSection>& SectionSections(SectionGroups[FillType]);
 
-    MeshSections.Reset(TotalGridCount);
-    MeshSections.SetNum(TotalGridCount);
+    SectionSections.Reset(TotalGridCount);
+    SectionSections.SetNum(TotalGridCount);
 
-    uint8* PositionDataPtr = reinterpret_cast<uint8*>(RHILockVertexBuffer(PositionData.Buffer, 0, PositionData.Buffer->GetSize(), RLM_ReadOnly));
-    uint8* TangentDataPtr  = reinterpret_cast<uint8*>(RHILockVertexBuffer(TangentData.Buffer, 0, TangentData.Buffer->GetSize(), RLM_ReadOnly));
+    uint8* PositionDataPtr = reinterpret_cast<uint8*>(RHILockStructuredBuffer(PositionData.Buffer, 0, PositionData.Buffer->GetSize(), RLM_ReadOnly));
+    uint8* TangentDataPtr  = reinterpret_cast<uint8*>(RHILockStructuredBuffer(TangentData.Buffer, 0, TangentData.Buffer->GetSize(), RLM_ReadOnly));
     uint8* TexCoordDataPtr = reinterpret_cast<uint8*>(RHILockVertexBuffer(TexCoordData.Buffer, 0, TexCoordData.Buffer->GetSize(), RLM_ReadOnly));
     uint8* ColorDataPtr    = reinterpret_cast<uint8*>(RHILockVertexBuffer(ColorData.Buffer, 0, ColorData.Buffer->GetSize(), RLM_ReadOnly));
     uint8* IndexDataPtr    = reinterpret_cast<uint8*>(RHILockVertexBuffer(IndexData.Buffer, 0, IndexData.Buffer->GetSize(), RLM_ReadOnly));
@@ -893,7 +882,7 @@ void FMarchingSquaresMap::GenerateMarchingCubes_RT(uint32 FillType, bool bInGene
         // Copy surface geometry
 
         {
-            FPMUMeshSection& Section(MeshSections[i]);
+            FPMUMeshSection& Section(SectionSections[i]);
 
             TArray<FVector>&   SectionPositionData(Section.Positions);
             TArray<uint32>&    SectionTangentData(Section.Tangents);
@@ -931,6 +920,7 @@ void FMarchingSquaresMap::GenerateMarchingCubes_RT(uint32 FillType, bool bInGene
             FMemory::Memcpy(SectionColorDataPtr, ColorDataPtr+ColorByteOffset, ColorByteCount);
             FMemory::Memcpy(SectionIndexDataPtr, IndexDataPtr+IndexByteOffset, IndexByteCount);
 
+            Section.bInitializeInvalidVertexData = false;
             Section.bSectionVisible = bValidSection;
             Section.SectionLocalBox = LocalBounds;
         }
@@ -939,7 +929,7 @@ void FMarchingSquaresMap::GenerateMarchingCubes_RT(uint32 FillType, bool bInGene
 
         if (bUseDualMesh)
         {
-            FPMUMeshSection& Section(MeshSections[i+GridCount]);
+            FPMUMeshSection& Section(SectionSections[i+GridCount]);
 
             TArray<FVector>&   SectionPositionData(Section.Positions);
             TArray<uint32>&    SectionTangentData(Section.Tangents);
@@ -977,6 +967,7 @@ void FMarchingSquaresMap::GenerateMarchingCubes_RT(uint32 FillType, bool bInGene
             FMemory::Memcpy(SectionColorDataPtr, ColorDataPtr+ColorByteOffset, ColorByteCount);
             FMemory::Memcpy(SectionIndexDataPtr, IndexDataPtr+IndexByteOffset, IndexByteCount);
 
+            Section.bInitializeInvalidVertexData = false;
             Section.bSectionVisible = bValidSection;
             Section.SectionLocalBox = LocalBounds;
         }
@@ -985,8 +976,8 @@ void FMarchingSquaresMap::GenerateMarchingCubes_RT(uint32 FillType, bool bInGene
     RHIUnlockVertexBuffer(IndexData.Buffer);
     RHIUnlockVertexBuffer(ColorData.Buffer);
     RHIUnlockVertexBuffer(TexCoordData.Buffer);
-    RHIUnlockVertexBuffer(TangentData.Buffer);
-    RHIUnlockVertexBuffer(PositionData.Buffer);
+    RHIUnlockStructuredBuffer(TangentData.Buffer);
+    RHIUnlockStructuredBuffer(PositionData.Buffer);
 }
 
 //bool FMarchingSquaresMap::IsPrefabValid(int32 PrefabIndex, int32 LODIndex, int32 SectionIndex) const

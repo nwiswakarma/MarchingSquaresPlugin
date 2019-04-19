@@ -47,6 +47,9 @@
 
 #define BASE_OFFSET  _HeightOffset
 
+#define POS_STRIDE 12
+#define TAN_STRIDE 8
+
 // Cell triangulation class
 //
 // (v & 0x000F) Cell geometry type
@@ -228,10 +231,11 @@ RWBuffer<uint> OutCellCaseData;
 RWBuffer<uint> OutFillCellIdData;
 RWBuffer<uint> OutEdgeCellIdData;
 
-RWBuffer<float>  OutPositionData;
-RWBuffer<float2> OutTexCoordData;
-RWBuffer<uint>   OutTangentData;
-RWBuffer<uint>   OutColorData;
+RWByteAddressBuffer OutPositionData;
+//RWBuffer<uint>      OutTangentData;
+RWByteAddressBuffer OutTangentData;
+RWBuffer<float2>    OutTexCoordData;
+RWBuffer<uint>      OutColorData;
 
 RWStructuredBuffer<uint4> OutGeomCountData;
 
